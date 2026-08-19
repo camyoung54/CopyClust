@@ -2,8 +2,22 @@
 #'
 #' Gold standard integrative cluster labels of 1,075 example TCGA samples from 'test_data' determined using combined copy number and gene expression classifier from iC10 package.
 #'
+#' Note that integrative cluster labels in this object are stored zero-indexed
+#' (values `0`-`9`), whereas [CopyClust()] returns one-indexed labels (`1`-`10`).
+#' Add one to `test_labels` before comparing the two:
+#'
+#' ```
+#' results = CopyClust(test_data, model_approach = "6C")
+#' truth = as.numeric(test_labels[,2]) + 1
+#' mean(results$IntClust_Label == truth)
+#' ```
+#'
+#' This object is reference data only; it is not used by [CopyClust()] or
+#' [CC_format()] and has no bearing on model predictions.
+#'
 #' @format ## `test_labels`
-#' A 1075 by 2 matrix
+#' A 1075 by 2 matrix. Column 1 is the TCGA sample ID; column 2 is the
+#' zero-indexed integrative cluster label (`0`-`9`).
 "test_labels"
 
 #' CopyClust Example Data from TCGA Pre-Formatted

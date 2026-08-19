@@ -7,7 +7,8 @@
 \format{
 \subsection{\code{test_labels}}{
 
-A 1075 by 2 matrix
+A 1075 by 2 matrix. Column 1 is the TCGA sample ID; column 2 is the
+zero-indexed integrative cluster label (\code{0}-\code{9}).
 }
 }
 \usage{
@@ -15,5 +16,18 @@ test_labels
 }
 \description{
 Gold standard integrative cluster labels of 1,075 example TCGA samples from 'test_data' determined using combined copy number and gene expression classifier from iC10 package.
+}
+\details{
+Note that integrative cluster labels in this object are stored zero-indexed
+(values \code{0}-\code{9}), whereas \code{\link[=CopyClust]{CopyClust()}} returns one-indexed labels
+(\code{1}-\code{10}). Add one to \code{test_labels} before comparing the two:
+
+\preformatted{results = CopyClust(test_data, model_approach = "6C")
+truth = as.numeric(test_labels[,2]) + 1
+mean(results$IntClust_Label == truth)
+}
+
+This object is reference data only; it is not used by \code{\link[=CopyClust]{CopyClust()}} or
+\code{\link[=CC_format]{CC_format()}} and has no bearing on model predictions.
 }
 \keyword{datasets}

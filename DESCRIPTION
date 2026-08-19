@@ -1,6 +1,6 @@
 Package: CopyClust
 Title: A Copy-Number-Based Integrative Cluster Classification Scheme
-Version: 1.1.0
+Version: 1.1.1
 Authors@R: c(
     person("Cameron", "Young", email = "cameron.young@cruk.cam.ac.uk", role = c("cre", "aut"), comment = c(ORCID = "0000-0001-7323-4834")),
     person("Oscar", "Rueda", email = "oscar.rueda@mrc-bsu.cam.ac.uk", role = "aut"))
@@ -11,7 +11,7 @@ Imports:
     dplyr,
     tidyr,
     knitr,
-    xgboost (>= 1.7.5)
+    xgboost (>= 2.0.0)
 Suggests:
     ggplot2,
     iC10,

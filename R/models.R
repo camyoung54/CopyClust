@@ -3,6 +3,34 @@ utils::globalVariables(c("IntClust_Label", "IntClust_colors", "ID", "loc.end", "
                          "hg18_ranges", "hg19_ranges", "hg38_ranges", "Range", "Value"))
 IntClust_colors = c("#E94D03","#7CB772","#B93377","#6EB8BB","#782D24","#F3E855","#364085","#E4AA2B","#E696E1","#6E3387")
 
+#Internal helper for the 6-class binary reclassification step.
+#Subsets the scaled matrix to one coarse subgroup, runs the binary model, and
+#maps the predicted probability onto the two constituent IntClust labels.
+#Returns a zero-row data frame when the subgroup is empty, so that callers can
+#rbind() unconditionally.
+.cc_reclassify = function(model_raw, data_input, samples, low, high) {
+  if (nrow(samples) == 0) {
+    empty = data.frame(IntClust_Label = numeric(0))
+    return(empty)
+  }
+
+  data_subset = as.matrix(data_input[which(rownames(data_input) %in% rownames(samples)),])
+
+  #A single sample collapses to a 478 x 1 column; restore it to 1 x 478
+  if (dim(data_subset)[1] == 478 & dim(data_subset)[2] == 1) {
+    data_subset = t(data_subset)
+    rownames(data_subset) = rownames(samples)
+  }
+
+  model = xgb.load.raw(model_raw)
+  probability = predict(model, data_subset)
+  subgroup_prediction = as.data.frame(ifelse(probability < 0.5, low, high))
+  colnames(subgroup_prediction) = "IntClust_Label"
+  rownames(subgroup_prediction) = rownames(data_subset)
+
+  return(subgroup_prediction)
+}
+
 #' CopyClust model integrative cluster prediction for breast cancer tumors
 #'
 #'@description
@@ -63,54 +91,11 @@ CopyClust = function(data_input, model_approach = "6C") {
     samples_910 = prediction %>% filter(IntClust_Label == "9/10")
     other_samples = prediction %>% filter(IntClust_Label == "2" | IntClust_Label == "6")
 
-    #Filter Binary Data
-    data_15 = as.matrix(data_input[which(rownames(data_input) %in% rownames(samples_15)),])
-    if(dim(data_15)[1] == 478 & dim(data_15)[2] == 1) {
-      data_15 = t(data_15)
-      rownames(data_15) = rownames(samples_15)
-    }
-
-    data_38 = as.matrix(data_input[which(rownames(data_input) %in% rownames(samples_38)),])
-    if(dim(data_38)[1] == 478 & dim(data_38)[2] == 1) {
-      data_38 = t(data_38)
-      rownames(data_38) = rownames(samples_38)
-    }
-
-    data_47 = as.matrix(data_input[which(rownames(data_input) %in% rownames(samples_47)),])
-    if(dim(data_47)[1] == 478 & dim(data_47)[2] == 1) {
-      data_47 = t(data_47)
-      rownames(data_47) = rownames(samples_47)
-    }
-    data_910 = as.matrix(data_input[which(rownames(data_input) %in% rownames(samples_910)),])
-    if(dim(data_910)[1] == 478 & dim(data_910)[2] == 1) {
-      data_910 = t(data_910)
-      rownames(data_910) = rownames(samples_910)
-    }
-
     #Implement Binary Models
-    CopyClust_15_Binary_model = xgb.load.raw(CopyClust_15_Binary_model)
-    samples_15_prediction = predict(CopyClust_15_Binary_model, data_15)
-    samples_15_prediction = as.data.frame(ifelse(samples_15_prediction < 0.5, 1, 5))
-    colnames(samples_15_prediction) = "IntClust_Label"
-    rownames(samples_15_prediction) = rownames(data_15)
-
-    CopyClust_38_Binary_model = xgb.load.raw(CopyClust_38_Binary_model)
-    samples_38_prediction = predict(CopyClust_38_Binary_model, data_38)
-    samples_38_prediction = as.data.frame(ifelse(samples_38_prediction < 0.5, 3, 8))
-    colnames(samples_38_prediction) = "IntClust_Label"
-    rownames(samples_38_prediction) = rownames(data_38)
-
-    CopyClust_47_Binary_model = xgb.load.raw(CopyClust_47_Binary_model)
-    samples_47_prediction = predict(CopyClust_47_Binary_model, data_47)
-    samples_47_prediction = as.data.frame(ifelse(samples_47_prediction < 0.5, 4, 7))
-    colnames(samples_47_prediction) = "IntClust_Label"
-    rownames(samples_47_prediction) = rownames(data_47)
-
-    CopyClust_910_Binary_model = xgb.load.raw(CopyClust_910_Binary_model)
-    samples_910_prediction = predict(CopyClust_910_Binary_model, data_910)
-    samples_910_prediction = as.data.frame(ifelse(samples_910_prediction < 0.5, 9, 10))
-    colnames(samples_910_prediction) = "IntClust_Label"
-    rownames(samples_910_prediction) = rownames(data_910)
+    samples_15_prediction = .cc_reclassify(CopyClust_15_Binary_model, data_input, samples_15, 1, 5)
+    samples_38_prediction = .cc_reclassify(CopyClust_38_Binary_model, data_input, samples_38, 3, 8)
+    samples_47_prediction = .cc_reclassify(CopyClust_47_Binary_model, data_input, samples_47, 4, 7)
+    samples_910_prediction = .cc_reclassify(CopyClust_910_Binary_model, data_input, samples_910, 9, 10)
 
     prediction = as.data.frame(rbind(samples_38_prediction, samples_47_prediction, samples_910_prediction, samples_15_prediction, other_samples))
     prediction = prediction[order(rownames(prediction)),,drop=FALSE]
